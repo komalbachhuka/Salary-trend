@@ -1,0 +1,280 @@
+---
+title: "MenWomenSalary"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r}
+library(zoo)
+library(tidyverse)
+library(readxl)
+library(corrgram)
+library(tseries)
+library(urca)
+library(forecast)
+library(ggplot2)
+```
+
+Import the File
+
+```{r}
+
+
+TimeSeries<-read_excel("C:/Users/bachh/OneDrive/Desktop/Textbooks/TBANLT 540 (Regression)/Salary_perc.xlsx")
+
+#TimeSeries$Year <- ts(TimeSeries$Year)
+summary(TimeSeries)
+head(TimeSeries)
+str(TimeSeries)
+
+```
+
+Change data type to Timeseries and create three vectors we will work on.
+```{r}
+#tell R data is time series data
+TSWhiteEarnings<-zoo(TimeSeries$WhiteEarnings, order.by = TimeSeries$Year)
+TSHispanicLatinoEarnings<-zoo(TimeSeries$HispanicLatinoEarnings, order.by = TimeSeries$Year)
+TSAfricanAmericanEarnings<-zoo(TimeSeries$AfricanAmericanEarnings, order.by = TimeSeries$Year)
+```
+
+Understand the characteristics of each key attributes by creating line plots.
+```{r}
+## plots for timeseries data
+ggplot(data = TimeSeries, aes(x = TimeSeries$Year, y =TimeSeries$WhiteEarnings))+ geom_line()
+ggplot(data = TimeSeries, aes(x = TimeSeries$Year, y =TimeSeries$HispanicLatinoEarnings)) + geom_line()
+ggplot(data = TimeSeries, aes(x = TimeSeries$Year, y =TimeSeries$AfricanAmericanEarnings)) + geom_line()
+```
+
+
+# Test for Stationality
+
+Conduct ADF test and KPSS test to make sure stationality for tswhite, tshisp, and tsblack.
+
+## TSWhiteEarnings
+Here are the tests for TSWhiteEarnings:
+```{r}
+#test for stationarity for TSWhiteEarnings
+adf.test(TSWhiteEarnings)
+```
+
+The p-value of adf test is 0.673, which is larger than 0.05.
+Therefore, we fail to reject the null hypothesis.
+Thus, there is no stationarity.
+
+```{r}
+#test for trend stationarity for TSWhiteEarnings
+kpss.test(TSWhiteEarnings, null = "Trend")
+```
+
+The p-value of KPSS test is 0.01023, which is lower than 0.05.
+Therefore, we reject the null hypothesis.
+Thus, there is no trend stationarity.
+
+Based on the ADF and KPSS tests, exponential smoothing will not be applied. But, we can apply AUTO ARIMA model.
+
+## TSHispanicLatinoEarnings
+Here are the tests for TSHispanicLatinoEarnings:
+
+```{r}
+#test for stationarity for TSHispanicLatinoEarnings
+adf.test(TSHispanicLatinoEarnings)
+```
+
+The p-value of adf test is 0.5661, which is larger than 0.05.
+Therefore, we fail to reject the null hypothesis.
+Thus, there is no stationarity.
+
+```{r}
+#test for stationarity for TSHispanicLatinoEarnings
+kpss.test(TSHispanicLatinoEarnings, null = "Trend")
+```
+
+The p-value of KPSS test is 0.01218, which is lower than 0.05.
+Therefore, we reject the null hypothesis.
+Thus, there is no trend stationarity.
+
+Based on the ADF and KPSS tests, exponential smoothing will not be applied. But, we can apply AUTO ARIMA model.
+
+## TSAfricanAmericanEarnings
+Here are the tests for TSAfricanAmericanEarnings:
+
+```{r}
+#test for stationarity for TSAfricanAmericanEarnings
+adf.test(TSAfricanAmericanEarnings)
+```
+
+The p-value of adf test is 0.3654, which is larger than 0.05.
+Therefore, we fail to reject the null hypothesis.
+Thus, there is no stationarity.
+
+```{r}
+#test for stationarity for tsblack
+kpss.test(TSAfricanAmericanEarnings, null = "Trend")
+```
+
+The p-value of KPSS test is 0.04746, which is lower than 0.05.
+Therefore, we reject the null hypothesis.
+Thus, there is no trend stationarity.
+
+Based on the ADF and KPSS tests, exponential smoothing will not be applied. But, we can apply AUTO ARIMA model.
+
+#Create the Correlograms
+
+##TSWhiteEarnings
+
+```{r}
+#ACF for TSWhiteEarnings
+par(mfrow=c(1,2))
+acf(TSWhiteEarnings)
+pacf(TSWhiteEarnings)
+```
+
+Based on the correlograms above, autoregressive model (p=1, d= 0, q = 0) seems to be appropriate. 
+This is because ACF tails off, and PACF cuts off after 1 lag. 
+However, at the same time, there may be some seasonal trend because there is slightly sign curve on the PACF.
+Therefore, AUTO ARIMA will be used. 
+
+##TSHispanicLatinoEarnings
+
+```{r}
+#ACF for TSHispanicLatinoEarnings
+par(mfrow=c(1,2))
+acf(TSHispanicLatinoEarnings)
+pacf(TSHispanicLatinoEarnings)
+```
+
+Based on the correlograms above, SARIMA seems to be appropriate. 
+This is because ACF tails off, and PACF cuts off after 1 lag. 
+In addition, there may exist some seasonal trends because there is a slight sign curve on the PACF.
+Therefore, AUTO ARIMA will be used.
+
+#TSAfricanAmericanEarnings
+
+```{r}
+#ACF for TSAfricanAmericanEarnings
+par(mfrow=c(1,2))
+acf(TSAfricanAmericanEarnings)
+pacf(TSAfricanAmericanEarnings)
+
+```
+
+Based on the correlograms above, SARIMA seems to be appropriate. 
+This is because ACF tails off, and PACF cuts off after 1 lag. 
+In addition, there may exist some seasonal trends because there is a slight sign curve on the PACF.
+Therefore, AUTO ARIMA will be used.
+
+#Model Building and Forecasting
+
+Based on the analysis we have conducted above, we will apply AUTO ARIMA to build models.
+
+##TSWhiteEarnings
+
+Here is the model for TSWhiteEarnings
+
+```{r}
+#Build model for tswhite
+WhiteArima <- auto.arima(TSWhiteEarnings)
+WhiteArima
+```
+
+Here is the forecast of the WhiteArima model. 
+
+```{r}
+#Forecasting using AUTO ARIMA - TSWhiteEarnings
+WhiteArimaForecast <- forecast(WhiteArima, h = 10)
+plot(WhiteArimaForecast)
+```
+
+
+
+
+
+##TSHispanicLatinoEarnings
+
+Here is the model for TSHispanicLatinoEarnings
+
+```{r}
+#Build model for TSHispanicLatinoEarnings
+HispanicLatinoArima <- auto.arima(TSHispanicLatinoEarnings)
+HispanicLatinoArima
+```
+
+Here is the forecast of the HispanicLatinoArima model. 
+
+```{r}
+#Forecasting using AUTO ARIMA - TSHispanicLatinoEarnings
+HispanicLatinoArimaForecast <- forecast(HispanicLatinoArima, h = 10)
+plot(HispanicLatinoArimaForecast)
+```
+
+##TSAfricanAmericanEarnings
+
+Here is the model for TSAfricanAmericanEarnings
+
+```{r}
+#Build model for TSAfricanAmericanEarnings
+AfricanAmericanArima <- auto.arima(TSAfricanAmericanEarnings)
+AfricanAmericanArima
+```
+
+Here is the forecast of the WhiteArima model. 
+
+```{r}
+#Forecasting using AUTO ARIMA - TSAfricanAmericanEarnings
+AfricanAmericanArimaForecast <- forecast(AfricanAmericanArima, h = 10)
+plot(AfricanAmericanArimaForecast)
+```
+
+
+# Resisual Plot
+
+Here are the residual plots for TSWhiteEarnings, TSHispanicLatinoEarnings, and TSAfricanAmericanEarnings
+
+##TSWhiteEarnings
+
+```{r}
+par(mfrow=c(1,2))
+#Residual plots for Rain
+acf(ts(WhiteArima$residuals), main='ACF Residual - Full')
+pacf(ts(WhiteArima$residuals), main='PACF Residual - Full')
+```
+
+Interpretation of the Residual Plot for WhiteARIMA:
+In both ACF and PACF residual plots, there is only one line that goes over blue lines. This means that, these residuals are not significantly different from 0. In orther words, the model predicts accurately.  
+Considering all the information above, we can consider this model tends to be reliable. 
+
+To be sure, based on the residual plots, some non-linearlities seem to exist. We can consider this phenomenon due to the characteristics of the data iteself, not seasonal pattern. Therefore, as for the next step, if this characteristics need to be clarified, we need to ask labor economists questions about labor theroies.
+
+##TSHispanicLatinoEarnings
+
+```{r}
+par(mfrow=c(1,2))
+#Residual plots for Rain
+acf(ts(HispanicLatinoArima$residuals), main='ACF Residual - Full')
+pacf(ts(HispanicLatinoArima$residuals), main='PACF Residual - Full')
+```
+
+Interpretation of the Residual Plot for HispanicLatinoArima:
+In both ACF and PACF residual plots, there is only one line that goes over blue lines. This means that, these residuals are not significantly different from 0. In orther words, the model predicts accurately.  
+Considering this, we can consider this model tends to be reliable. 
+
+To be sure, based on the residual plots, some non-linearlities seem to exist. We can consider this phenomenon due to the characteristics of the data iteself, not seasonal pattern. Therefore, as for the next step, if this characteristics need to be clarified, we need to ask labor economists questions about labor theroies.
+
+
+##TSAfricanAmericanEarnings
+
+```{r}
+par(mfrow=c(1,2))
+#Residual plots for Rain
+acf(ts(AfricanAmericanArima$residuals), main='ACF Residual - Full')
+pacf(ts(AfricanAmericanArima$residuals), main='PACF Residual - Full')
+```
+
+Interpretation of the Residual Plot for AfricanAmericanArima:
+In both ACF and PACF residual plots, there is only one line that goes over blue lines. This means that, these residuals are not significantly different from 0. In orther words, the model predicts accurately.  
+Considering all the information above, we can consider this model tends to be reliable. 
+
+To be sure, based on the residual plots above, some non-linearlities seem to exist. We can consider this phenomenon due to the characteristics of the data iteself, not seasonal pattern. Therefore, as for the next step, if this characteristics need to be clarified, we need to ask labor economists questions about labor theroies.
+
+
